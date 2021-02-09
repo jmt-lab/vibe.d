@@ -2,9 +2,24 @@
 
 set -e -x -o pipefail
 
+dub --version
+$DC --version
+
 DUB_ARGS="--build-mode=${DUB_BUILD_MODE:-separate} ${DUB_ARGS:-}"
 # default to run all parts
 : ${PARTS:=lint,builds,unittests,examples,tests,meson}
+
+DUB_ARGS_HTTP=$DUB_ARGS
+DUB_ARGS_HTTP_S=$DUB_ARGS
+
+if [[ $PARTS =~ (^|,)vibe-http(,|$) ]]; then
+    DUB_ARGS_HTTP="${DUB_ARGS} --override-config vibe-d:http/experimental"
+fi
+
+# TODO: support coverage builds!
+#if [[ $PARTS =~ (^|,)coverage(,|$) ]]; then
+#    DFLAGS="-g -debug -cov -version=VibedSetCoverageMerge"
+#fi
 
 if [[ $PARTS =~ (^|,)lint(,|$) ]]; then
     ./scripts/test_version.sh
@@ -14,12 +29,12 @@ fi
 
 if [[ $PARTS =~ (^|,)builds(,|$) ]]; then
     # test for successful release build
-    dub build --combined -b release --compiler=$DC
+    dub build --combined -b release --compiler=$DC $DUB_ARGS
     dub clean --all-packages
 
     # test for successful 32-bit build
     if [ "$DC" == "dmd" ]; then
-        dub build --combined --arch=x86
+        dub build --combined --arch=x86 $DUB_ARGS
         dub clean --all-packages
     fi
 fi
@@ -27,10 +42,14 @@ fi
 if [[ $PARTS =~ (^|,)unittests(,|$) ]]; then
     dub test :data --compiler=$DC $DUB_ARGS
     dub test :mongodb --compiler=$DC $DUB_ARGS
-    dub test :redis --compiler=$DC $DUB_ARGS
-    dub test :web --compiler=$DC $DUB_ARGS
+    dub test :redis --compiler=$DC $DUB_ARGS_HTTP
+    dub test :web --compiler=$DC $DUB_ARGS_HTTP
     dub test :utils --compiler=$DC $DUB_ARGS
-    dub test :http --compiler=$DC $DUB_ARGS
+    if [[ $PARTS =~ (^|,)vibe-http(,|$) ]]; then
+        # vibe-http is tested on its own, skip it here
+    else
+        dub test :http --compiler=$DC $DUB_ARGS
+    fi
     dub test :mail --compiler=$DC $DUB_ARGS
     dub test :stream --compiler=$DC $DUB_ARGS
     dub test :crypto --compiler=$DC $DUB_ARGS
@@ -43,7 +62,16 @@ fi
 if [[ $PARTS =~ (^|,)examples(,|$) ]]; then
     for ex in $(\ls -1 examples/); do
         echo "[INFO] Building example $ex"
-        (cd examples/$ex && dub build --compiler=$DC $DUB_ARGS && dub clean)
+
+        # determine whether vibe-d:http is involved
+        if [[ "`dub describe --root=examples/$ex --data=versions`" == *Have_vibe_d_http* ]]
+        then
+            ARGS=$DUB_ARGS_HTTP
+        else
+            ARGS=$DUB_ARGS
+        fi
+
+        (cd examples/$ex && dub build --compiler=$DC $ARGS && dub clean)
     done
 fi
 
@@ -57,7 +85,16 @@ if [[ $PARTS =~ (^|,)tests(,|$) ]]; then
                 echo "[WARNING] Skipping test $ex due to TravisCI incompatibility".
             else
                 echo "[INFO] Running test $ex"
-                (cd tests/$ex && dub --compiler=$DC $DUB_ARGS && dub clean)
+
+                # determine whether vibe-d:http is involved
+                if [[ "`dub describe --root=tests/$ex --data=versions`" == *Have_vibe_d_http* ]]
+                then
+                    ARGS=$DUB_ARGS_HTTP
+                else
+                    ARGS=$DUB_ARGS
+                fi
+
+                (cd tests/$ex && dub --compiler=$DC $ARGS && dub clean)
             fi
         fi
     done

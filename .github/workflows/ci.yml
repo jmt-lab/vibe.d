@@ -23,9 +23,10 @@ jobs:
           - ldc-1.17.0
         include:
           # Default
-          - { parts: 'builds,unittests,examples,tests,mongo', extra_dflags: '' }
+          - { parts: 'builds,unittests,examples,tests,mongo' }
           # Custom part for coverage
-          - { dc: dmd-latest, parts: 'unittests,tests', extra_dflags: "-cov -version=VibedSetCoverageMerge" }
+          - { dc: dmd-latest, parts: 'unittests,tests,coverage'}
+          - { os: ubuntu-latest, dc: ldc-latest, parts: 'unittests,examples,tests,vibe-http' }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -48,6 +49,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
     - name: Prepare compiler
       uses: dlang-community/setup-dlang@v1
@@ -57,10 +60,11 @@ jobs:
     - name: '[POSIX] Run tests'
       env:
         VIBED_DRIVER: vibe-core
-        PARTS: builds,unittests,examples,tests,mongo
+        PARTS: ${{matrix.parts}}
       run: |
+        git fetch --tags
         ./travis-ci.sh
 
     - name: '[DMD] Upload coverage to Codecov'
-      if: matrix.dc == 'dmd-latest'
+      if: matrix.parts == 'unittests,tests'
       uses: codecov/codecov-action@v1
