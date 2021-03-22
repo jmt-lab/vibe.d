@@ -384,6 +384,22 @@ struct DictionaryList(VALUE, bool case_sensitive = true, size_t NUM_STATIC_FIELD
 	assert(b.getAll("a") == [1, 2]);
 }
 
+@safe nothrow unittest {
+	DictionaryList!(int, true) a;
+	a.addField("a", 1);
+	assert(("b" in a) is null);
+	assert(("a" in a) !is null);
+	assert(("A" in a) is null);
+	assert(*("a" in a) == 1);
+
+	DictionaryList!(int, false) b;
+	b.addField("a", 1);
+	assert(!("b" in b));
+	assert(("a" in b) !is null);
+	assert(("A" in b) !is null);
+	assert(*("a" in b) == 1);
+}
+
 unittest {
 	import std.variant : Variant;
 	DictionaryList!(Variant) c;

@@ -168,7 +168,9 @@ string formatAlloc(ARGS...)(IAllocator alloc, string fmt, ARGS args)
 
 /// Special version of icmp() with optimization for ASCII characters
 int icmp2(const(char)[] a, const(char)[] b)
-@safe pure {
+@safe pure nothrow {
+	import std.typecons : Yes;
+
 	size_t i = 0, j = 0;
 
 	// fast skip equal prefix
@@ -189,8 +191,8 @@ int icmp2(const(char)[] a, const(char)[] b)
 			if( ac < bc ) return -1;
 			else if( ac > bc ) return 1;
 		} else {
-			dchar acp = decode(a, i);
-			dchar bcp = decode(b, j);
+			dchar acp = decode!(Yes.useReplacementDchar)(a, i);
+			dchar bcp = decode!(Yes.useReplacementDchar)(b, j);
 			if( acp != bcp ){
 				acp = std.uni.toLower(acp);
 				bcp = std.uni.toLower(bcp);
