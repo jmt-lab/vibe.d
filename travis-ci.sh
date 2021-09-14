@@ -45,9 +45,8 @@ if [[ $PARTS =~ (^|,)unittests(,|$) ]]; then
     dub test :redis --compiler=$DC $DUB_ARGS_HTTP
     dub test :web --compiler=$DC $DUB_ARGS_HTTP
     dub test :utils --compiler=$DC $DUB_ARGS
-    if [[ $PARTS =~ (^|,)vibe-http(,|$) ]]; then
-        # vibe-http is tested on its own, skip it here
-    else
+    # vibe-http is tested on its own, skip it here
+    if ! [[ $PARTS =~ (^|,)vibe-http(,|$) ]]; then
         dub test :http --compiler=$DC $DUB_ARGS
     fi
     dub test :mail --compiler=$DC $DUB_ARGS
